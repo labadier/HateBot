@@ -1,11 +1,16 @@
+import random; random.seed(42)
+import numpy as np; np.random.seed(42)
+import torch; torch.manual_seed(42)
+import os
+
 from sklearn.model_selection import StratifiedKFold
 from transformers import AutoModel, AutoTokenizer, BloomForCausalLM
 from torch.utils.data import Dataset, DataLoader
 from sklearn.metrics import f1_score, mean_squared_error
-import torch, random, numpy as np, os
 from tqdm import tqdm
 
 import pandas as pd
+import mlflow
 
 class bcolors:
   HEADER = '\033[95m'
@@ -49,8 +54,8 @@ class Data(Dataset):
 
     if torch.is_tensor(idx):
       idx = idx.tolist()
-
-    ret = {key: self.data[key][idx] for key in self.data.keys()}
+      
+    ret = {key: self.data.iloc[idx][key] for key in self.data.keys()}
     return ret
    
 
@@ -73,7 +78,7 @@ class SeqModel(torch.nn.Module):
     self.classifier = torch.nn.Linear(in_features=self.interm_neurons>>1, out_features=2)
     self.loss_criterion = torch.nn.CrossEntropyLoss()
     
-    self.device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
+    self.device = torch.device("cuda:0") if torch.cuda.is_available() else ('mps' if torch.backends.mps.is_available() else 'cpu')
     self.to(device=self.device)
 
   def forward(self, data):
@@ -117,6 +122,31 @@ class SeqModel(torch.nn.Module):
     params.append({'params':self.classifier.parameters(), 'lr':lr*multiplier})
 
     return torch.optim.RMSprop(params, lr=lr*multiplier, weight_decay=decay)
+  
+  def predict(self, 
+    data: np.array,
+    batch_size: int = 64):
+
+    devloader = DataLoader(Data(pd.DataFrame({'text': data})),
+                            batch_size=batch_size, shuffle=False)#, num_workers=4, worker_init_fn=seed_worker)
+    itera = tqdm(enumerate(devloader, 0))
+
+    running_stats = {'outputs':None, 'indexes':None}
+    for j, data in itera:
+
+        torch.cuda.empty_cache()            
+        outputs = self.forward(data['text'])
+
+        if running_stats['outputs'] is None:
+          running_stats['outputs'] = outputs.detach().cpu()
+          # running_stats['indexes'] = data['index']
+        else:
+          running_stats['outputs'] = torch.cat((running_stats['outputs'], outputs.detach().cpu()), dim=0)
+          # running_stats['indexes'] = torch.cat((running_stats['indexes'], data['index']), dim=0)
+
+    out = {'out': list(torch.max(running_stats['outputs'], 1).indices.detach().cpu().numpy())}#'index': list(running_stats['indexes'].detach().cpu().numpy()),
+    return out['out']
+
 
 def measurement(running_stats, task):
     
@@ -140,7 +170,7 @@ def train_model(model_name, model, trainloader, devloader, epoches, lr, decay, o
         running_stats = {'outputs':None, 'labels':None}
         model.train()
 
-        itera = tqdm(enumerate(trainloader, 0))
+        itera = tqdm(enumerate(trainloader, 0), total=batches)
         itera.set_description(f'Epoch: {epoch:3d}')
 
         for j, data in itera:
@@ -190,8 +220,13 @@ def train_model(model_name, model, trainloader, devloader, epoches, lr, decay, o
                     dev_measure = measurement(running_dev, task)
                     
                 if model.best_acc is None or model.best_acc < dev_measure:
-                    model.save(os.path.join(output, f"{model_name.split('/')[-1]}_{task}"))
+                    model.save(os.path.join(output, f"{model_name.split('/')[-1]}_best.pt"))
                     model.best_acc = dev_measure
+
+                mlflow.log_metric('train_loss', train_loss)
+                mlflow.log_metric('train_f1', train_measure)
+                mlflow.log_metric('dev_loss', dev_loss)
+                mlflow.log_metric('dev_f1', dev_measure)
 
                 itera.set_postfix_str(f"loss:{train_loss:.3f} measure:{train_measure:.3f} \
                                       dev_loss:{dev_loss:.3f} dev_measure: {dev_measure:.3f}") 
@@ -205,11 +240,10 @@ def train_model_dev(model_name, data_train, data_dev, task = 'classification', e
 
   history = []
 
-  history.append({'loss': [], 'acc':[], 'dev_loss': [], 'dev_acc': []})
   model = SeqModel(interm_layer_size, model_name, task)
 
-  trainloader = DataLoader(Data(data_train), batch_size=batch_size, shuffle=True, num_workers=4, worker_init_fn=seed_worker)
-  devloader = DataLoader(Data(data_dev), batch_size=batch_size, shuffle=True, num_workers=4, worker_init_fn=seed_worker)
+  trainloader = DataLoader(Data(data_train), batch_size=batch_size, shuffle=True)#, num_workers=4, worker_init_fn=seed_worker)
+  devloader = DataLoader(Data(data_dev), batch_size=batch_size, shuffle=False)#, num_workers=4, worker_init_fn=seed_worker)
 
   history.append(train_model(f'{model_name}', model, trainloader, devloader, epoches, lr, decay, output, task))
 
@@ -217,27 +251,5 @@ def train_model_dev(model_name, data_train, data_dev, task = 'classification', e
   del model
   del devloader
   return history
-
-def predict(model, model_name, task, data_dev):
-  
-  devloader = DataLoader(Data(data_dev), batch_size=16, shuffle=False, num_workers=4, worker_init_fn=seed_worker)
-  itera = tqdm(enumerate(devloader, 0))
-
-  running_stats = {'outputs':None, 'indexes':None}
-  for j, data in itera:
-
-      torch.cuda.empty_cache()            
-      outputs = model(data['text'])
-
-      if running_stats['outputs'] is None:
-        running_stats['outputs'] = outputs.detach().cpu()
-        running_stats['indexes'] = data['index']
-      else:
-        running_stats['outputs'] = torch.cat((running_stats['outputs'], outputs.detach().cpu()), dim=0)
-        running_stats['indexes'] = torch.cat((running_stats['indexes'], data['index']), dim=0)
-
-  out = {'index': list(running_stats['indexes'].detach().cpu().numpy()), task: list(torch.max(running_stats['outputs'], 1).indices.detach().cpu().numpy())}
-  df = pd.DataFrame(out)
-  df.to_csv(f'output/{model_name}_{task}.csv', index=False)
 
    
