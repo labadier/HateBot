@@ -2,6 +2,7 @@ services:
 
   ### MLflow Server
   mlflow:
+    container_name: mlflow_rlabadie
     image: ghcr.io/mlflow/mlflow
     ports:
       - "0.0.0.0:10010:8080"
@@ -21,12 +22,13 @@ services:
 
   ### Training Container
   trainer:
+    container_name: trainer_rlabadie
     build:
       context: .
       dockerfile: Dockerfile.train
     environment:
       - MLFLOW_TRACKING_URI=http://mlflow:8080
-      - EXPERIMENT_NAME=OffensiveTraining
+      - EXPERIMENT_NAME=Offensive
       - MODEL_NAME=OffenseBERT
       - ARTIFACTS_PATH=/workspace/mlruns
     depends_on:
@@ -38,8 +40,12 @@ services:
       resources:
         reservations:
           devices:
-            - driver: nvidia
+            - driver: nvidia 
+              device_ids: ["MIG-f9d9db06-9c3c-5e59-a3a2-aa09a85e0d7a"] 
               capabilities: [gpu]
+    command: /bin/bash
+    stdin_open: true  # Keep STDIN open for interaction (for bash)
+    tty: true  
     networks:
         - mlops_net
 

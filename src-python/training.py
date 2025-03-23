@@ -76,6 +76,7 @@ def optuna_reward( trial: optuna.Trial, settings: dict, datatrain: pd.DataFrame,
 ARTIFACTS_PATH = os.environ.get('ARTIFACTS_PATH', None)
 MODEL_NAME = os.environ.get('MODEL_NAME', None)
 EXPERIMENT_NAME = os.environ.get('EXPERIMENT_NAME', None)
+MLFLOW_TRACKING_URI = os.environ.get('MLFLOW_TRACKING_URI', None)
 
 
 if __name__ == '__main__':
@@ -97,7 +98,7 @@ if __name__ == '__main__':
     df_test[settings['task']] = df_test[settings['task']].map(mapping)
     df_train[settings['task']] = df_train[settings['task']].map(mapping)
 
-    mlflow.set_tracking_uri(uri='http://localhost:8080')
+    mlflow.set_tracking_uri(uri=MLFLOW_TRACKING_URI)
     mlflow.set_experiment(EXPERIMENT_NAME)
 
     with mlflow.start_run(experiment_id=get_or_create_experiment(EXPERIMENT_NAME),
@@ -119,7 +120,7 @@ if __name__ == '__main__':
                                                     model.predict(data = df_train['text'].to_list()))
 
         model_info = mlflow.pytorch.log_model(model,
-                                              artifact_path="ofenseval_learn",
+                                              artifact_path=ARTIFACTS_PATH,
                                               signature=signature,
                                               input_example=df_train['text'].to_list()[:4])
         

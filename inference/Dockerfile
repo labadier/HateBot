@@ -25,6 +25,8 @@ RUN chmod -R a+rw /workspace
 
 
 COPY --chown=app:app ../requirements.txt /workspace
+COPY --chown=app:app ../src-python /workspace
+COPY --chown=app:app app.py /workspace
 
 RUN python -m pip install --upgrade pip && pip install --upgrade --root-user-action=ignore -r requirements.txt
 
