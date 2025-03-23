@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+
+  ### MLflow Server
+  mlflow:
+    image: mlflow/mlflow
+    ports:
+      - "8080:8080"
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:8080
+    volumes:
+      - ./mlruns:/mlflow/mlruns
+    command: >
+      mlflow server
+        --backend-store-uri sqlite:///mlflow/mlruns/mlflow.db
+        --default-artifact-root /mlflow/mlruns
+        --host 0.0.0.0
+        --port 8080
+
+  ### Training Container
+  trainer:
+    build:
+      context: .
+      dockerfile: Dockerfile.train
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:8080
+      - EXPERIMENT_NAME=OffensiveTraining
+      - MODEL_NAME=OffenseBERT
+      - ARTIFACTS_PATH=/app/mlruns
+    depends_on:
+      - mlflow
+    volumes:
+      - ./mlruns:/app/mlruns
+      - ./dataset:/app/dataset
+
+  ### Inference Container
+  inference:
+    build:
+      context: ./inference
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:8080
+      - MODEL_NAME=OffenseBERT
+    depends_on:
+      - mlflow
+    volumes:
+      - ./mlruns:/app/mlruns

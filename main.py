@@ -92,15 +92,16 @@ with mlflow.start_run() as mlrun:
 
 
 # %%
+import mlflow
 model_uri = "models:/offenseval_learn_quickstart/latest"
 
-mlflow.set_tracking_uri(uri='http://localhost:8080')
+mlflow.set_tracking_uri(uri='http://localhost:8000')
 
-experiment_id = get_or_create_experiment('hate_learn')
-mlflow.set_experiment(experiment_id=experiment_id)
+# experiment_id = get_or_create_experiment('hate_learn')
+# mlflow.set_experiment(experiment_id=experiment_id)
 
-loaded_model = mlflow.pytorch.load_model(model_info.model_uri)
-predictions = loaded_model.predict(df_test['text'].to_list())
+loaded_model = mlflow.pytorch.load_model(model_uri)
+predictions = loaded_model.predict(['This is shit', 'hate you'])
 
 
 # result = pd.DataFrame(X_test, columns=iris_feature_names)

@@ -1,7 +1,7 @@
 import random; random.seed(0)
 import numpy as np; np.random.seed(0)
 
-from models import train_model_dev, SeqModel
+from models.SeqModel import train_model_dev, SeqModel
 import pickle,  pandas as pd
 import seaborn as sns
 
@@ -62,7 +62,7 @@ def optuna_reward( trial: optuna.Trial, settings: dict, datatrain: pd.DataFrame,
     with mlflow.start_run(nested=True):
 
         hyperparameters = {
-            "interm_layer_size": trial.suggest_int('interm_layer_size', 1, 100),
+            "interm_layer_size": trial.suggest_categorical('interm_layer_size', [128, 256, 512]),
             "lr": trial.suggest_float('lr', 1e-6, 5e-5),
             "decay": trial.suggest_float('decay', 1e-6, 1e-3),
         }
@@ -72,24 +72,36 @@ def optuna_reward( trial: optuna.Trial, settings: dict, datatrain: pd.DataFrame,
 
         return max(history['dev_acc'])
 
+
+ARTIFACTS_PATH = os.environ.get('ARTIFACTS_PATH', None)
+MODEL_NAME = os.environ.get('MODEL_NAME', None)
+EXPERIMENT_NAME = os.environ.get('EXPERIMENT_NAME', None)
+
+
 if __name__ == '__main__':
 
     optuna.logging.set_verbosity(optuna.logging.ERROR)
 
     #load data
-    df_test = pd.read_csv('dataset/test.tsv', sep='\t')
-    df_train = pd.read_csv('dataset/train.tsv', sep='\t')
+    df_test = pd.read_csv('dataset/test.tsv', sep='\t').fillna(' ')
+    df_train = pd.read_csv('dataset/train.tsv', sep='\t').fillna(' ')
+
+    settings = {'model_name': 'bert-base-uncased',
+            'task': 'offensive',
+            'epoch': 12,
+            'batch_size': 32,
+            'output': '.'}
+
+    mapping = {i:j for j, i in enumerate(sorted(df_train[settings['task']].unique()))}
+
+    df_test[settings['task']] = df_test[settings['task']].map(mapping)
+    df_train[settings['task']] = df_train[settings['task']].map(mapping)
 
     mlflow.set_tracking_uri(uri='http://localhost:8080')
-    mlflow.set_experiment('offensiveval')
+    mlflow.set_experiment(EXPERIMENT_NAME)
 
-    with mlflow.start_run(experiment_id=get_or_create_experiment('offensiveval'),
-                          run_name='optuna', nested=True):
-        settings = {'model_name': 'bert-base-uncased',
-                    'task': 'offensive',
-                    'epoch': 24,
-                    'batch_size': 32,
-                    'output': '.'}
+    with mlflow.start_run(experiment_id=get_or_create_experiment(EXPERIMENT_NAME),
+                          run_name='optuna', nested=False):
         
         study = optuna.create_study(direction='maximize')
         study.optimize(lambda trial: optuna_reward(trial, settings, df_train, df_test), n_trials=10)
@@ -106,11 +118,20 @@ if __name__ == '__main__':
         signature = mlflow.models.signature.infer_signature(df_train['text'].to_list(), 
                                                     model.predict(data = df_train['text'].to_list()))
 
-        model_info = mlflow.pytorch.log_model(model, artifact_path="ofenseval_learn", 
-                                        signature=signature,
-                                        registered_model_name="offenseval_learn_quickstart")
+        model_info = mlflow.pytorch.log_model(model,
+                                              artifact_path="ofenseval_learn",
+                                              signature=signature,
+                                              input_example=df_train['text'].to_list()[:4])
+        
+        client = mlflow.tracking.MlflowClient()
+        client.create_registered_model(name=MODEL_NAME)
 
+        model_version = client.create_model_version(name=MODEL_NAME,
+                                                    source=model_info,
+                                                    run_id=mlflow.active_run().info.run_id)
+        
+        client.transition_model_version_stage(name=MODEL_NAME,
+                                            version=model_version.version,
+                                            stage="Production")
+        
 
-    ## run optuna
-    ## take the best hyperparameters
-    ## run that model and save the weights
