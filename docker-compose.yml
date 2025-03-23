@@ -1,12 +1,10 @@
-version: '3.8'
-
 services:
 
   ### MLflow Server
   mlflow:
-    image: mlflow/mlflow
+    image: ghcr.io/mlflow/mlflow
     ports:
-      - "0.0.0.0:10008:8080"
+      - "0.0.0.0:10010:8080"
     environment:
       - MLFLOW_TRACKING_URI=http://mlflow:8080
     volumes:
@@ -51,10 +49,11 @@ services:
       context: ./inference
       dockerfile: Dockerfile
     ports:
-      - "8000:8000"
+      - "0.0.0.0:10011:8082"
     environment:
       - MLFLOW_TRACKING_URI=http://mlflow:8080
       - MODEL_NAME=OffenseBERT
+      - PYTHON_PORT=8082
     depends_on:
       - mlflow
     volumes:
