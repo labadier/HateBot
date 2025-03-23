@@ -6,7 +6,7 @@ services:
   mlflow:
     image: mlflow/mlflow
     ports:
-      - "8080:8080"
+      - "0.0.0.0:10008:8080"
     environment:
       - MLFLOW_TRACKING_URI=http://mlflow:8080
     volumes:
@@ -17,6 +17,9 @@ services:
         --default-artifact-root /mlflow/mlruns
         --host 0.0.0.0
         --port 8080
+    networks:
+      - mlops_net
+
 
   ### Training Container
   trainer:
@@ -27,12 +30,14 @@ services:
       - MLFLOW_TRACKING_URI=http://mlflow:8080
       - EXPERIMENT_NAME=OffensiveTraining
       - MODEL_NAME=OffenseBERT
-      - ARTIFACTS_PATH=/app/mlruns
+      - ARTIFACTS_PATH=/workspace/mlruns
     depends_on:
       - mlflow
     volumes:
-      - ./mlruns:/app/mlruns
-      - ./dataset:/app/dataset
+      - ./mlruns:/workspace/mlruns
+      - ./dataset:/workspace/dataset
+    networks:
+        - mlops_net
 
   ### Inference Container
   inference:
@@ -47,4 +52,11 @@ services:
     depends_on:
       - mlflow
     volumes:
-      - ./mlruns:/app/mlruns
+      - ./mlruns:/workspace/mlruns
+    networks:
+      - mlops_net
+
+networks:
+  mlops_net:
+    name: mlops_network
+    driver: bridge

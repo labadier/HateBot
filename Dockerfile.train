@@ -28,8 +28,5 @@ COPY --chown=app:app requirements.txt /workspace
 
 RUN python -m pip install --upgrade pip && pip install --upgrade --root-user-action=ignore -r requirements.txt
 
-# COPY --chown=app:app routines /workspace
-# RUN mkdir /workspace/output_files
-
 USER app
 
