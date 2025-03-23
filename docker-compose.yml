@@ -36,6 +36,12 @@ services:
     volumes:
       - ./mlruns:/workspace/mlruns
       - ./dataset:/workspace/dataset
+    deploy: 
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              capabilities: [gpu]
     networks:
         - mlops_net
 
