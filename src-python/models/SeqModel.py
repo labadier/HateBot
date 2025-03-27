@@ -86,7 +86,7 @@ class SeqModel(torch.nn.Module):
     ids = self.tokenizer(data, return_tensors='pt', truncation=True, padding=True, max_length=self.max_length).to(device=self.device)
 
     if 'bloom' not in self.model:
-      X = self.transformer(**ids)[0][:,0]
+      X = self.transformer(**ids)[0][:,0]#!TODO: change to make jit-able
     else:
       X = self.transformer.transformer(**ids).last_hidden_state[:,-1,:]
 
@@ -97,7 +97,7 @@ class SeqModel(torch.nn.Module):
 
   def load(self, path):
     print(f"{bcolors.OKCYAN}{bcolors.BOLD}Weights Loaded{bcolors.ENDC}") 
-    self.load_state_dict(torch.load(path, map_location=self.device))
+    self.load_state_dict(torch.load(path, map_location=self.device, weights_only=True))
 
   def save(self, path):
     torch.save(self.state_dict(), path)
@@ -125,7 +125,7 @@ class SeqModel(torch.nn.Module):
   
   def predict(self, 
     data: np.array,
-    batch_size: int = 64):
+    batch_size: int = 32):
 
     devloader = DataLoader(Data(pd.DataFrame({'text': data})),
                             batch_size=batch_size, shuffle=False)#, num_workers=4, worker_init_fn=seed_worker)
@@ -134,7 +134,8 @@ class SeqModel(torch.nn.Module):
     running_stats = {'outputs':None, 'indexes':None}
     for j, data in itera:
 
-        torch.cuda.empty_cache()            
+        if torch.cuda.is_available():
+          torch.cuda.empty_cache()            
         outputs = self.forward(data['text'])
 
         if running_stats['outputs'] is None:
@@ -174,8 +175,8 @@ def train_model(model_name, model, trainloader, devloader, epoches, lr, decay, o
         itera.set_description(f'Epoch: {epoch:3d}')
 
         for j, data in itera:
-
-            torch.cuda.empty_cache()         
+            if torch.cuda.is_available():
+              torch.cuda.empty_cache()         
             labels = data[task].to(model.device)     
 
             optimizer.zero_grad()

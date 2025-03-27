@@ -17,7 +17,7 @@ services:
         --host 0.0.0.0
         --port 8080
     networks:
-      - mlops_net
+      - mlops_net_rlabadie
 
 
   ### Training Container
@@ -30,11 +30,10 @@ services:
       - MLFLOW_TRACKING_URI=http://mlflow:8080
       - EXPERIMENT_NAME=Offensive
       - MODEL_NAME=OffenseBERT
-      - ARTIFACTS_PATH=/workspace/mlruns
     depends_on:
       - mlflow
     volumes:
-      - ./mlruns:/workspace/mlruns
+      - ./mlruns:/mlflow/mlruns
       - ./dataset:/workspace/dataset
     deploy: 
       resources:
@@ -43,14 +42,13 @@ services:
             - driver: nvidia 
               device_ids: ["MIG-f9d9db06-9c3c-5e59-a3a2-aa09a85e0d7a"] 
               capabilities: [gpu]
-    command: /bin/bash
-    stdin_open: true  # Keep STDIN open for interaction (for bash)
-    tty: true  
+    command: python training.py
     networks:
-        - mlops_net
+        - mlops_net_rlabadie
 
   ### Inference Container
   inference:
+    container_name: inference_rlabadie
     build:
       context: ./inference
       dockerfile: Dockerfile
@@ -63,11 +61,15 @@ services:
     depends_on:
       - mlflow
     volumes:
-      - ./mlruns:/workspace/mlruns
+      - ./mlruns:/mlflow/mlruns
+    command: python app.py 
+    # command: /bin/bash #!TODO change to python train.py and remove stdin_open and tty
+    # stdin_open: true  # Keep STDIN open for interaction (for bash)
+    # tty: true
     networks:
-      - mlops_net
+      - mlops_net_rlabadie
 
 networks:
-  mlops_net:
-    name: mlops_network
+  mlops_net_rlabadie:
+    name: mlops_network_rlabadie
     driver: bridge

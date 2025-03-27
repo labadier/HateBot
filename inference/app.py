@@ -2,18 +2,25 @@ from fastapi import FastAPI, Request
 from typing import Union, Optional, List
 from pydantic import BaseModel
 
-from inference import predict
 import os, logging
 import mlflow
 
+import torch
+
+os.environ['CUDA_VISIBLE_DEVICES'] = ''
+
+DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+print('Using computing device:', DEVICE)
 PYTHON_PORT = int(os.environ.get('PYTHON_PORT', None))
 MODEL_NAME = os.environ.get('MODEL_NAME', None)
 MLFLOW_TRACKING_URI = os.environ.get('MLFLOW_TRACKING_URI', None)
 
 app = FastAPI()
 
-mlflow.set_tracking_uri(uri='http://localhost:8000')
-loaded_model = mlflow.pytorch.load_model( f"models:/{MODEL_NAME}/latest")
+mlflow.set_tracking_uri(uri=MLFLOW_TRACKING_URI)
+loaded_model = mlflow.pytorch.load_model( f"models:/{MODEL_NAME}/latest", map_location=DEVICE)
+loaded_model.device = DEVICE
 
 def predict(objects: dict) -> dict:
 
@@ -32,7 +39,7 @@ def inference(request: dict) -> Union[dict,None]:
         logging.error(e)
         status = 500
 
-    return {'response': response, 'status': status}
+    return {'response': [int(i) for i in response], 'status': status}
 
 @app.get("/health")
 def health():

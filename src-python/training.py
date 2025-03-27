@@ -1,5 +1,6 @@
 import random; random.seed(0)
 import numpy as np; np.random.seed(0)
+import torch; torch.manual_seed(0)
 
 from models.SeqModel import train_model_dev, SeqModel
 import pickle,  pandas as pd
@@ -53,7 +54,7 @@ def run_training(datatrain, datadev, settings : dict ) -> dict:
                              batch_size = settings['batch_size'], 
                              interm_layer_size = settings['interm_layer_size'],
                              lr = settings['lr'],
-                            decay=settings['decay'], output=settings['output'])
+                            decay=settings['decay'], output=settings['output'])[-1]
     return history
 
 def optuna_reward( trial: optuna.Trial, settings: dict, datatrain: pd.DataFrame, 
@@ -72,11 +73,10 @@ def optuna_reward( trial: optuna.Trial, settings: dict, datatrain: pd.DataFrame,
 
         return max(history['dev_acc'])
 
-
-ARTIFACTS_PATH = os.environ.get('ARTIFACTS_PATH', None)
 MODEL_NAME = os.environ.get('MODEL_NAME', None)
 EXPERIMENT_NAME = os.environ.get('EXPERIMENT_NAME', None)
 MLFLOW_TRACKING_URI = os.environ.get('MLFLOW_TRACKING_URI', None)
+BATCH_SIZE = os.environ.get('BATCH_SIZE', 32)
 
 
 if __name__ == '__main__':
@@ -84,13 +84,13 @@ if __name__ == '__main__':
     optuna.logging.set_verbosity(optuna.logging.ERROR)
 
     #load data
-    df_test = pd.read_csv('dataset/test.tsv', sep='\t').fillna(' ')
-    df_train = pd.read_csv('dataset/train.tsv', sep='\t').fillna(' ')
+    df_test = pd.read_csv('dataset/test.tsv', sep='\t').fillna(' ')[:10]
+    df_train = pd.read_csv('dataset/train.tsv', sep='\t').fillna(' ')[:10]
 
     settings = {'model_name': 'bert-base-uncased',
             'task': 'offensive',
-            'epoch': 12,
-            'batch_size': 32,
+            'epoch': 1,
+            'batch_size': BATCH_SIZE,
             'output': '.'}
 
     mapping = {i:j for j, i in enumerate(sorted(df_train[settings['task']].unique()))}
@@ -104,8 +104,12 @@ if __name__ == '__main__':
     with mlflow.start_run(experiment_id=get_or_create_experiment(EXPERIMENT_NAME),
                           run_name='optuna', nested=False):
         
+
+        print('tracking uri:', mlflow.get_tracking_uri())
+        print('artifact uri:', mlflow.get_artifact_uri())
+
         study = optuna.create_study(direction='maximize')
-        study.optimize(lambda trial: optuna_reward(trial, settings, df_train, df_test), n_trials=10)
+        study.optimize(lambda trial: optuna_reward(trial, settings, df_train, df_test), n_trials=1)
 
         mlflow.log_params(study.best_params)
         mlflow.log_metric('best_f1', study.best_value)
@@ -116,23 +120,29 @@ if __name__ == '__main__':
                             settings['task'])
         
         model.load(os.path.join(settings['output'], f"{settings['model_name'].split('/')[-1]}_best.pt"))
+        # model = torch.jit.script(model)
         signature = mlflow.models.signature.infer_signature(df_train['text'].to_list(), 
-                                                    model.predict(data = df_train['text'].to_list()))
+                                                    model.predict(data = df_train['text'].to_list(), 
+                                                                  batch_size=settings['batch_size']))
 
         model_info = mlflow.pytorch.log_model(model,
-                                              artifact_path=ARTIFACTS_PATH,
-                                              signature=signature,
-                                              input_example=df_train['text'].to_list()[:4])
-        
-        client = mlflow.tracking.MlflowClient()
-        client.create_registered_model(name=MODEL_NAME)
+                                              artifact_path=EXPERIMENT_NAME,
+                                              signature=signature, 
+                                              registered_model_name=MODEL_NAME,
+                                              code_paths=['models'],)
+       
 
-        model_version = client.create_model_version(name=MODEL_NAME,
-                                                    source=model_info,
-                                                    run_id=mlflow.active_run().info.run_id)
         
-        client.transition_model_version_stage(name=MODEL_NAME,
-                                            version=model_version.version,
-                                            stage="Production")
+        # client = mlflow.tracking.MlflowClient()
+        # client.create_registered_model(name=MODEL_NAME)
+
+
+        # model_version = client.create_model_version(name=MODEL_NAME,
+        #                                             source=model_info.model_uri,
+        #                                             run_id=mlflow.active_run().info.run_id)
+        
+        # client.transition_model_version_stage(name=MODEL_NAME,
+        #                                     version=model_version.version,
+        #                                     stage="Production")
         
 
