@@ -16,13 +16,12 @@ jobs:
       - name: Checkout code #copy code from repo to runner
         uses: actions/checkout@v4 
 
-      - name: Set up JDK   #for maven
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-
-      - name: Unit Tests
+      - name: Set Test environment   #for maven
         run: |
           pip install -r requirements.txt 
-          python -m unittest discover -s tests -p "*.py" #run all test files in tests folder
+          pip install pytest
+          
+      - name: Unit Tests
+        run: |
+          pytest --maxfail=1 --disable-warnings -q tests/
+
