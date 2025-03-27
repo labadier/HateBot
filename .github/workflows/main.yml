@@ -1,0 +1,28 @@
+name: Build and Deploy HateSpeech Detection Model
+
+on: 
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-deploy:
+    name: Build and Deploy Model
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code #copy code from repo to runner
+        uses: actions/checkout@v4 
+
+      - name: Set up JDK   #for maven
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Unit Tests
+        run: |
+        pip install -r requirements.txt
+        python -m unittest discover -s tests -p "*.py" #run all test files in tests folder
