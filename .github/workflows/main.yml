@@ -36,15 +36,15 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          dockerfile: Dockerfile.train
+          file: ./Dockerfile.train
           push: true
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/hatespeech-detection-training:latest
 
-      - name: Build Inference Image
-        uses: docker/build-push-action@v6
-        with:
-          context: inference
-          dockerfile: Dockerfile
-          push: true
-          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/hatespeech-detection-inference:latest
+      # - name: Build Inference Image
+      #   uses: docker/build-push-action@v6
+      #   with:
+      #     context: inference
+      #     dockerfile: Dockerfile
+      #     push: true
+      #     tags: ${{ secrets.DOCKER_HUB_USERNAME }}/hatespeech-detection-inference:latest
 
