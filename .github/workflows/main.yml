@@ -9,22 +9,28 @@ on:
       - main
 
 jobs:
-  build-deploy:
+
+  make-unit-tests:
     name: Build and Deploy Model
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code #copy code from repo to runner
         uses: actions/checkout@v4 
 
-      # - name: Set Test environment   #for maven
-      #   run: |
-      #     pip install -r requirements.txt 
-      #     pip install pytest pytest-ordering
+      - name: Set Test environment   #for maven
+        run: |
+          pip install -r requirements.txt 
+          pip install pytest pytest-ordering
           
-      # - name: Unit Tests
-      #   run: |
-      #     pytest --maxfail=1 --disable-warnings -q tests/
-      
+      - name: Unit Tests
+        run: |
+          pytest --maxfail=1 --disable-warnings -q tests/
+    
+  build-push-training-image:
+    name: Build and Push Training Image
+    runs-on: ubuntu-latest
+    needs: make-unit-tests
+    steps:
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
@@ -39,12 +45,17 @@ jobs:
           file: ./Dockerfile.train
           push: true
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/hatespeech-detection-training:latest
-
-      # - name: Build Inference Image
-      #   uses: docker/build-push-action@v6
-      #   with:
-      #     context: inference
-      #     dockerfile: Dockerfile
-      #     push: true
-      #     tags: ${{ secrets.DOCKER_HUB_USERNAME }}/hatespeech-detection-inference:latest
+          
+  build-push-inference-image:
+    name: Build and Push Inference Image
+    runs-on: ubuntu-latest
+    needs: make-unit-tests
+    steps:
+      - name: Build Inference Image
+        uses: docker/build-push-action@v6
+        with:
+          context: inference
+          dockerfile: Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/hatespeech-detection-inference:latest
 

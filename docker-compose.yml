@@ -4,8 +4,8 @@ services:
   mlflow:
     container_name: mlflow_rlabadie
     image: ghcr.io/mlflow/mlflow
-    ports:
-      - "0.0.0.0:10010:8080"
+    # ports:
+    #   - "0.0.0.0:10010:8080"
     environment:
       - MLFLOW_TRACKING_URI=http://mlflow:8080
     volumes:
@@ -18,6 +18,15 @@ services:
         --port 8080
     networks:
       - mlops_net_rlabadie
+      - neuronal_external
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.mlflowrlabadie.rule=Host(`mlflow.rlabadie.neuronalresearch.media.fhstp.ac.at`)"
+      - "traefik.http.routers.mlflowrlabadie.entrypoints=web-secure"
+      - "traefik.http.routers.mlflowrlabadie.tls=true"
+      - "traefik.http.routers.mlflowrlabadie.tls.certresolver=letsencrypt"
+      - "traefik.http.services.mlflowrlabadie.loadbalancer.server.port=8080"
+      - "traefik.docker.network=neuronal_external"
 
   ### Training Container
   trainer:
@@ -62,9 +71,6 @@ services:
     volumes:
       - ./mlruns:/mlflow/mlruns
     command: python app.py 
-    # command: /bin/bash #!TODO change to python train.py and remove stdin_open and tty
-    # stdin_open: true  # Keep STDIN open for interaction (for bash)
-    # tty: true
     networks:
       - mlops_net_rlabadie
 
