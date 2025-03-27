@@ -33,7 +33,7 @@ jobs:
           registry: docker.io
 
       - name: Build Training Image
-        uses: docker/build-push-docker@v6
+        uses: docker/build-push-action@v6
         with:
           context: .
           dockerfile: Dockerfile.train
@@ -41,7 +41,7 @@ jobs:
           tags: ${{ secrets.DOCKER_USERNAME }}/hatespeech-detection-training:latest
 
       - name: Build Inference Image
-        uses: docker/build-push-docker@v6
+        uses: docker/build-push-action@v6
         with:
           context: inference
           dockerfile: Dockerfile
