@@ -2,3 +2,4 @@ datasets
 *.pt
 ml*
 __pycache__
+.github

@@ -71,7 +71,7 @@ class SeqModel(torch.nn.Module):
     self.interm_neurons = interm_size
     self.transformer, self.tokenizer = HugginFaceLoad( model )
     self.model = model
-    self.intermediate = torch.nn.Sequential(torch.nn.Linear(in_features= 768 if 'bloom' not in model else 1536, out_features=self.interm_neurons), torch.nn.LeakyReLU(),
+    self.intermediate = torch.nn.Sequential(torch.nn.Linear(in_features= self.transformer.config.hidden_size if 'bloom' not in model else 1536, out_features=self.interm_neurons), torch.nn.LeakyReLU(),
                                             torch.nn.Linear(in_features=self.interm_neurons, out_features=self.interm_neurons>>1),
                                             torch.nn.LeakyReLU())
     

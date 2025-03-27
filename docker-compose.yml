@@ -19,7 +19,6 @@ services:
     networks:
       - mlops_net_rlabadie
 
-
   ### Training Container
   trainer:
     container_name: trainer_rlabadie

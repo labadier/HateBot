@@ -7,7 +7,7 @@ import mlflow
 
 import torch
 
-os.environ['CUDA_VISIBLE_DEVICES'] = ''
+# os.environ['CUDA_VISIBLE_DEVICES'] = ''
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
