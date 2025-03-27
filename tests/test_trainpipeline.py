@@ -5,7 +5,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'training'))
 from models.SeqModel import train_model_dev
 
-
+@pytest.mark.first
 def test_train_model():
 
     data_train = pd.DataFrame({

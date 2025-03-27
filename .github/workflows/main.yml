@@ -19,7 +19,7 @@ jobs:
       - name: Set Test environment   #for maven
         run: |
           pip install -r requirements.txt 
-          pip install pytest
+          pip install pytest pytest-ordering
           
       - name: Unit Tests
         run: |
