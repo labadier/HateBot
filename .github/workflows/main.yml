@@ -88,6 +88,7 @@ jobs:
           port: 22
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          passphrase: ${{ secrets.SSH_PASSPHRASE }}
           source: "docker-compose.yml"
           target: "/home/rlabadie/inference-hate-speech"
 
@@ -97,6 +98,7 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          passphrase: ${{ secrets.SSH_PASSPHRASE }}
           port: 22
           script: |
             cd /home/rlabadie/inference-hate-speech
