@@ -102,4 +102,4 @@ jobs:
             cd /home/rlabadie/inference-hate-speech
             docker-compose down
             docker-compose pull
-            docker-compose up inference -d --no-build
+            docker-compose up -d --no-build inference
