@@ -1,0 +1,12 @@
+services:
+  ### Training Container
+  trainer:
+    build:
+      context: .
+      dockerfile: Dockerfile.train
+   
+  ### Inference Container
+  inference:
+    build:
+      context: ./inference
+      dockerfile: Dockerfile
