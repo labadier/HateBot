@@ -86,8 +86,8 @@ jobs:
         with:
           host: ${{ secrets.SSH_HOST }}
           port: 22
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: "docker-compose.yml"
           target: "/home/rlabadie/inference-hate-speech"
 
@@ -95,8 +95,8 @@ jobs:
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
           script: |
             cd /home/rlabadie/inference-hate-speech
