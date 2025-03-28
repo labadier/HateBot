@@ -1,15 +1,14 @@
 services:
-
   ### MLflow Server
   mlflow:
     container_name: mlflow_rlabadie
     image: ghcr.io/mlflow/mlflow
-    # ports:
-    #   - "0.0.0.0:10010:8080"
+    ports:
+      - "0.0.0.0:10010:8080"
     environment:
       - MLFLOW_TRACKING_URI=http://mlflow:8080
     volumes:
-      - ./mlruns:/mlflow/mlruns
+      - /home/rlabadie/mlruns:/mlflow/mlruns
     command: >
       mlflow server
         --backend-store-uri sqlite:///mlflow/mlruns/mlflow.db
@@ -41,14 +40,14 @@ services:
     depends_on:
       - mlflow
     volumes:
-      - ./mlruns:/mlflow/mlruns
+      - /home/rlabadie/mlruns:/mlflow/mlruns
       - ./dataset:/workspace/dataset
     deploy: 
       resources:
         reservations:
           devices:
             - driver: nvidia 
-              device_ids: ["MIG-f9d9db06-9c3c-5e59-a3a2-aa09a85e0d7a"] 
+              device_ids: ["0"] 
               capabilities: [gpu]
     command: python training.py
     networks:
@@ -69,12 +68,23 @@ services:
     depends_on:
       - mlflow
     volumes:
-      - ./mlruns:/mlflow/mlruns
+      - /home/rlabadie/mlruns:/mlflow/mlruns
     command: python app.py 
     networks:
       - mlops_net_rlabadie
+      - neuronal_external
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.inferencerlabadie.rule=Host(`hate.inference.rlabadie.neuronalresearch.media.fhstp.ac.at`)"
+      - "traefik.http.routers.inferencerlabadie.entrypoints=web-secure"
+      - "traefik.http.routers.inferencerlabadie.tls=true"
+      - "traefik.http.routers.inferencerlabadie.tls.certresolver=letsencrypt"
+      - "traefik.http.services.inferencerlabadie.loadbalancer.server.port=8082"
+      - "traefik.docker.network=neuronal_external"
 
 networks:
   mlops_net_rlabadie:
     name: mlops_network_rlabadie
     driver: bridge
+  neuronal_external:
+    external: true
