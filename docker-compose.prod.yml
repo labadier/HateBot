@@ -1,8 +1,8 @@
 services:
   ### Training Container
   trainer:
-    image: rlabadie/hatespeech-detection-training:latest
+    image: labadier/hatespeech-detection-training:latest
     
   ### Inference Container
   inference:
-    image: rlabadie/hatespeech-detection-inference:latest
+    image: labadier/hatespeech-detection-inference:latest

@@ -30,10 +30,6 @@ services:
   ### Training Container
   trainer:
     container_name: trainer_rlabadie
-    image: rlabadie/hatespeech-detection-training:latest
-    build:
-      context: .
-      dockerfile: Dockerfile.train
     environment:
       - MLFLOW_TRACKING_URI=http://mlflow:8080
       - EXPERIMENT_NAME=Offensive
@@ -57,10 +53,6 @@ services:
   ### Inference Container
   inference:
     container_name: inference_rlabadie
-    image: rlabadie/hatespeech-detection-inference:latest
-    build:
-      context: ./inference
-      dockerfile: Dockerfile
     ports:
       - "0.0.0.0:10011:8082"
     environment:
