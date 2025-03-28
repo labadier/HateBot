@@ -30,6 +30,7 @@ services:
   ### Training Container
   trainer:
     container_name: trainer_rlabadie
+    image: rlabadie/hatespeech-detection-training:latest
     build:
       context: .
       dockerfile: Dockerfile.train
@@ -56,6 +57,7 @@ services:
   ### Inference Container
   inference:
     container_name: inference_rlabadie
+    image: rlabadie/hatespeech-detection-inference:latest
     build:
       context: ./inference
       dockerfile: Dockerfile
