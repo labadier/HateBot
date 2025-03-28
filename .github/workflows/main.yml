@@ -11,7 +11,7 @@ on:
 jobs:
 
   make-unit-tests:
-    name: Build and Deploy Model
+    name: Build Model
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code #copy code from repo to runner
@@ -21,6 +21,7 @@ jobs:
         run: |
           pip install -r requirements.txt 
           pip install pytest pytest-ordering
+          pip install torch==2.6.0
           
       - name: Unit Tests
         run: |
